@@ -5,8 +5,8 @@ import 'dart:developer' as developer;
 
 class AuthRequests {
   // login method
-  static Future<http.Response> login(String path, Object object) async {
-    final url = Uri.parse("${AppUrl.loginUrl}/$path");
+  static Future<http.Response> login(Object object) async {
+    final url = Uri.parse(AppUrl.loginUrl);
     developer.log('Final Login URL=========>: $url');
     final response = await http.post(
       url,

@@ -859,7 +859,7 @@ Widget _buildActionButton(BuildContext context, {
           ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildContactItem({

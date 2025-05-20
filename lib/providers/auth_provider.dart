@@ -88,7 +88,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      Response response = await AuthRequests.login('login', loginData);
+      Response response = await AuthRequests.login(loginData);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

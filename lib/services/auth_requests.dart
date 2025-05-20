@@ -5,8 +5,8 @@ import 'dart:developer' as developer;
 
 class AuthRequests {
   // login method
-  static Future<http.Response> login(Object object) async {
-    final url = Uri.parse(AppUrl.loginUrl);
+  Future<http.Response> login(String path, Object object) async {
+    final url = Uri.parse("${AppUrl.loginUrl}/$path");
     developer.log('Final Login URL=========>: $url');
     final response = await http.post(
       url,
@@ -20,8 +20,19 @@ class AuthRequests {
   }
 
   // register method
-  static Future<http.Response> register(String path, Object object) async {
-    final url = Uri.parse("${AppUrl.baseEndpoint}/auth/$path");
+  Future<http.Response> register(
+      String path,
+      Object object,
+      String username,
+      String lastName,
+      String email,
+      String role,
+      String password,
+      String phoneNumber,
+      String bio,
+      String companyTitle,
+      String jobTitle) async {
+    final url = Uri.parse("${AppUrl.registerUrl}/$path");
     developer.log("Register endpoint: $url");
 
     var response = await http.post(url,
@@ -35,7 +46,7 @@ class AuthRequests {
   }
 
   // activate account
-  static Future<http.Response> activateAccount(String otp) async {
+  Future<http.Response> activateAccount(String otp) async {
     final url =
         Uri.parse("${AppUrl.baseEndpoint}/auth/activate-account?otp=$otp");
     developer.log("Activation endpoint: $url");

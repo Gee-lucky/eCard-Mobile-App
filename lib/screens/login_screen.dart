@@ -3,14 +3,16 @@ import 'package:ecard_app/components/custom_widgets.dart';
 import 'package:ecard_app/providers/auth_provider.dart';
 import 'package:ecard_app/providers/user_provider.dart';
 import 'package:ecard_app/utils/raw/model_icons.dart';
+import 'package:ecard_app/utils/resources/animes/lottie_animes.dart';
 import 'package:ecard_app/utils/resources/images/images.dart';
 import 'package:ecard_app/utils/resources/strings/strings.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../components/alert_reminder.dart';
+import '../preferences/user_preference.dart';
 import 'dart:developer' as developer;
 
 class LoginPage extends StatefulWidget {
@@ -25,21 +27,26 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _formIsSubmitted = false;
   final _formKey = GlobalKey<FormState>();
-  // ignore: unused_field
   String? _password;
 
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final data = auth.formData[AuthScreen.loginScreen];
-      if (data != null) {
-        _usernameController.text = data['username'] ?? '';
-        _passwordController.text = data['password'] ?? '';
-      }
-    });
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _loadSavedCredentials();
+  // }
+
+  // Future<void> _loadSavedCredentials() async {
+  //   try {
+  //     final username = await UserPreferences.getUsername();
+  //     final password = await UserPreferences.getPassword();
+  //     if (username != null && password != null) {
+  //       _usernameController.text = username;
+  //       _passwordController.text = password;
+  //     }
+  //   } catch (e) {
+  //     developer.log("Error loading saved credentials: $e");
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -51,9 +58,11 @@ class _LoginPageState extends State<LoginPage> {
   void showLoader() => Alerts.showLoader(
       context: context,
       message: Loaders.loading,
-      icon: LoadingAnimationWidget.stretchedDots(
-        color: Theme.of(context).primaryColor,
-        size: 24.0,
+      icon: Lottie.asset(
+        LottieAnimes.loading,
+        width: 130,
+        height: 130,
+        fit: BoxFit.contain,
       ));
 
   // Helper method to show error messages
@@ -61,7 +70,12 @@ class _LoginPageState extends State<LoginPage> {
     Alerts.showError(
       context: context,
       message: message,
-      icon: Image.asset(Images.errorImage, height: 30, width: 30),
+      icon: Lottie.asset(
+        LottieAnimes.errorLoader,
+        width: 130,
+        height: 130,
+        fit: BoxFit.contain,
+      ),
     );
   }
 
@@ -70,10 +84,25 @@ class _LoginPageState extends State<LoginPage> {
     Alerts.showError(
       context: context,
       message: message,
-      icon: Image.asset(
-        Images.networkErrorImage,
-        width: 40,
-        height: 40,
+      icon: Lottie.asset(
+        LottieAnimes.errorLoader,
+        width: 130,
+        height: 130,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  // Helper method to show success message
+  void showSuccessMessage(String message) {
+    Alerts.showSuccess(
+      context: context,
+      message: message,
+      icon: Lottie.asset(
+        LottieAnimes.successLoader,
+        width: 60,
+        height: 60,
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -91,40 +120,39 @@ class _LoginPageState extends State<LoginPage> {
     _formKey.currentState!.save();
 
     showLoader();
+
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
       auth.updateFormField('username', _usernameController.text.trim());
       auth.updateFormField('password', _passwordController.text.trim());
 
-      final response = await auth
-          .login(
-            _usernameController.text.trim(),
-            _passwordController.text.trim(),
-          )
-          .timeout(const Duration(seconds: 60));
+      bool success = await auth.signIn(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+      );
 
       // Always close the loader dialog
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
 
-      if (response['status'] == true) {
-        // Success case
-        Provider.of<UserProvider>(context, listen: false)
-            .setUser(response['user']);
-        Navigator.pushReplacementNamed(context, '/dashboard');
+      if (success) {
+        // Show success message with Lottie animation for 2 seconds
+        showSuccessMessage('Login successful!');
+        
+        // Wait for 2 seconds before navigating
+        Timer(const Duration(seconds: 2), () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Close success dialog
+          }
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        });
       } else {
-        // Display the specific error message from the backend
-        showErrorMessage(response['message'] ?? 'Login failed');
+        // Display the specific error message from the auth provider
+        showErrorMessage(auth.errorMessage ?? 'Login failed');
       }
-    } on TimeoutException {
-      // Close the loader dialog
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-
-      showNetworkError(
-          "Login request timed out. Please check your internet connection.");
     } catch (e, stack) {
       // Close the loader dialog
       if (Navigator.canPop(context)) {
@@ -307,19 +335,26 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(
                                 height: 20,
                               ),
-                              ElevatedButton(
-                                onPressed: handleLogin,
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        Theme.of(context).primaryColor,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(10)))),
-                                child: Text(
-                                  Texts.login,
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
+                              auth.isLoading
+                                  ? Lottie.asset(
+                                      LottieAnimes.cardLoader,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.contain,
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: handleLogin,
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              Theme.of(context).primaryColor,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.all(
+                                                  Radius.circular(10)))),
+                                      child: Text(
+                                        Texts.login,
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
                               Center(
                                 child: SizedBox(
                                   height: 50,

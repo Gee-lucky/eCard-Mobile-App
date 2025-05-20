@@ -1,12 +1,15 @@
+import 'package:ecard_app/services/card_request_implementation.dart';
 import 'package:flutter/material.dart';
 import 'package:ecard_app/modals/card_modal.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class CardDetailsPage extends StatelessWidget {
   final CustomCard card;
 
-  const CardDetailsPage({super.key, required this.card});
+  const CardDetailsPage({super.key, required this.card, required currentUserId, required bool isFromShareLink});
 
   @override
   Widget build(BuildContext context) {
@@ -562,7 +565,7 @@ class CardDetailsPage extends StatelessWidget {
   }
 
   // Helper method to build share option buttons
- Widget _buildShareOption(
+  Widget _buildShareOption(
     BuildContext context, {
     required IconData icon,
     required Color color,
@@ -606,7 +609,8 @@ class CardDetailsPage extends StatelessWidget {
       ),
     );
   }
-  
+
+
   // Generate QR code data from card information
   String _generateCardQrData() {
     // Create a formatted string with card details
@@ -674,6 +678,7 @@ class CardDetailsPage extends StatelessWidget {
     // Implementation would use platform share dialog
     // This typically requires a share plugin like share_plus
   }
+
 
   Widget _buildBusinessCard(BuildContext context, double screenHeight) {
     Color backgroundColor =
@@ -821,45 +826,46 @@ class CardDetailsPage extends StatelessWidget {
       ],
     );
   }
-  
-Widget _buildActionButton(BuildContext context, {
-  required IconData icon,
-  required String label,
-  required Color color,
-  required Color iconColor,
-  required VoidCallback? onTap,
-}) {
-  return Material(
-    // ← 2. Use Material instead of InkWell as root
-    color: color,
-    borderRadius: BorderRadius.circular(8),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
+
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color iconColor,
+    required VoidCallback? onTap,
+  }) {
+    return Material(
+        // ← 2. Use Material instead of InkWell as root
+        color: color,
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          // ← 3. Add Container with fixed padding
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20, color: iconColor),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: iconColor,
-                ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              // ← 3. Add Container with fixed padding
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 20, color: iconColor),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: iconColor,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    ));
+        ));
   }
 
   Widget _buildContactItem({
@@ -1066,5 +1072,76 @@ Widget _buildActionButton(BuildContext context, {
   void _launchMaps(String address) {
     final encodedAddress = Uri.encodeComponent(address);
     launchUrl(Uri.parse('https://maps.google.com/?q=$encodedAddress'));
+  }
+
+  void _openOrganizationCard(BuildContext context) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Fetch the organization's card information
+      // This would typically be a database call to fetch the card by company name
+
+      final CardProvider cardProvider =Provider.of<CardProvider>(context, listen: false);
+
+      final String uuid = card.uuid ?? '';
+      final organizationCard = await cardProvider.getCardByUuid(uuid: uuid);
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (organizationCard != null) {
+        // final bool isOwner = card.userUuid == organizationCard[];
+        final bool isOwner = card.userUuid == organizationCard.userUuid;
+
+        // Navigate to the organization's card details page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CardDetailsPage(
+                card: organizationCard,
+              currentUserId: card.userUuid,
+              isFromShareLink: true,
+            ),
+          ),
+        );
+
+        // Show permission toast based on ownership
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isOwner
+                  ? 'You have full access to this organization card'
+                  : 'Viewing organization card in read-only mode',
+            ),
+            backgroundColor: isOwner ? Colors.green : Colors.blue,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        // Show error if organization card couldn't be found
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No card found for ${card.company}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog and show error
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading organization card: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

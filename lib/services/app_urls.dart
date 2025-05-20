@@ -1,5 +1,6 @@
 class AppUrl {
   static const String liveUrl = "https://alltanzaniaecard.onrender.com";
+
   static const String localhost = "http://192.168.1.101:8080";
 
   static const String baseEndpoint = localhost;
@@ -7,7 +8,6 @@ class AppUrl {
   static String getAllCardsById = "$baseEndpoint/api/v1/cards/user-cards";
   static const String registerUrl = "$baseEndpoint/auth/register";
   static const String forgotPassword = "$baseEndpoint/auth/forgotPassword";
-
   static var updateCard;
 
   static var deleteCard;

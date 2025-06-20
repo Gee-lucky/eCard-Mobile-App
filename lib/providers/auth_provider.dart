@@ -95,8 +95,13 @@ class AuthProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    final Map<String, dynamic> loginData = {
+      'username': username,
+      'password': password,
+    };
+
     try {
-      final response = await _apiService.login(username, password);
+      final response = await _apiService.login(loginData);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
